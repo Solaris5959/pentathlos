@@ -1,7 +1,7 @@
-mod server;
 mod models;
 mod prompts;
 mod resources;
+mod server;
 mod services;
 mod tools;
 mod utils;

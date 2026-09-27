@@ -1,5 +1,3 @@
-
-
 use pentathlos::tools::echo;
 
 #[tokio::test]
@@ -10,7 +8,10 @@ async fn test_echo_tool() {
 
     // Await the future before calling unwrap()
     let result = echo::run(params).await;
-    
+
     // Update the assertion to match your expected server response format
-    assert_eq!(result.unwrap(), "Server successfully received: Hello, World!");
+    assert_eq!(
+        result.unwrap(),
+        "Server successfully received: Hello, World!"
+    );
 }

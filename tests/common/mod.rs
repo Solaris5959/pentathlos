@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::{PathBuf};
+use std::path::PathBuf;
 use tempfile::TempDir;
 
 pub struct TestVault {

@@ -46,7 +46,11 @@ impl ResourceManager {
         let canonical_root = vault_root.as_ref().canonicalize()?;
         Ok(Self {
             vault_root: canonical_root,
-            excluded_dirs: vec![".obsidian".to_string(), ".git".to_string(), ".trash".to_string()],
+            excluded_dirs: vec![
+                ".obsidian".to_string(),
+                ".git".to_string(),
+                ".trash".to_string(),
+            ],
         })
     }
 
@@ -56,7 +60,10 @@ impl ResourceManager {
             uri: "vault://index".to_string(),
             name: "Vault Index".to_string(),
             mime_type: Some("text/plain".to_string()),
-            description: Some("A complete hierarchical list of all Markdown files in the Obsidian vault.".to_string()),
+            description: Some(
+                "A complete hierarchical list of all Markdown files in the Obsidian vault."
+                    .to_string(),
+            ),
         }]
     }
 
@@ -83,22 +90,25 @@ impl ResourceManager {
         for entry in WalkDir::new(&self.vault_root)
             .into_iter()
             .filter_entry(|e| self.is_not_excluded(e))
-            .filter_map(Result::ok) // Filter out entries that resulted in an error or are excluded
+            .filter_map(Result::ok)
+        // Filter out entries that resulted in an error or are excluded
         {
             if entry.file_type().is_file() {
                 let path = entry.path();
                 // Only include Markdown files
                 if path.extension().is_some_and(|ext| ext == "md")
-                    && let Ok(relative_path) = path.strip_prefix(&self.vault_root) {
-                        // Normalize paths to forward slashes for cross-platform consistency
-                        let display_path = relative_path.to_string_lossy().replace("\\", "/");
-                        index.push_str(&format!("- {}\n", display_path));
-                        file_count += 1;
-                    }
+                    && let Ok(relative_path) = path.strip_prefix(&self.vault_root)
+                {
+                    // Normalize paths to forward slashes for cross-platform consistency
+                    let display_path = relative_path.to_string_lossy().replace("\\", "/");
+                    index.push_str(&format!("- {}\n", display_path));
+                    file_count += 1;
+                }
             }
         }
 
-        if file_count == 0 { // If no markdown files were found, add a note to the index
+        if file_count == 0 {
+            // If no markdown files were found, add a note to the index
             index.push_str("_No markdown files found in the vault._\n");
         }
 
