@@ -2,7 +2,7 @@
 
 ## P0 — Core / Essential
 
-- [ ] Expose vault directories and files as MCP Resources
+- [x] Expose vault directories and files as MCP Resources
 - [ ] Tool to read notes
 - [ ] Tool to create new notes
 - [ ] Tool to append text to existing notes
@@ -103,3 +103,12 @@
 - [ ] MCP prompt for daily note creation
 - [ ] MCP prompt for weekly review
 - [ ] Allow user-defined prompt templates
+
+## Running/Developing
+
+To test against the MCP server, use `npx @modelcontextprotocol/inspector cargo run --quiet` to send messages to the server and receive responses. 
+
+To build and run the MCP server, use `cargo build` and `cargo run --quiet`.
+
+To connect the MCP server to you local LLM, point the MCP to the local working directory, with command `cargo` and arguments `run` and `--quiet`.
+    Note that `--quiet` is required, otherwise the LLM will be inundated with logs and it will be unable to properly parse the incoming informatio
