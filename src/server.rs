@@ -2,6 +2,7 @@
 use rmcp::handler::server::wrapper::Parameters;
 use rmcp::{RoleServer, ServerHandler, ServiceExt, tool, tool_router};
 use tokio::io::{stdin, stdout};
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use rmcp::model::{
@@ -13,14 +14,9 @@ use rmcp::ErrorData;
 use crate::tools::echo::{self, EchoParams};
 use crate::resources::vault::{ResourceError, ResourceManager};
 
+/* Tools Implementation */
 #[derive(Clone)]
 struct Tools;
-
-#[derive(Clone)]
-struct Server {
-    vault_manager: Arc<ResourceManager>,
-    tools: Tools,
-}
 
 #[tool_router(server_handler)]
 impl Tools {
@@ -31,6 +27,13 @@ impl Tools {
     ) -> Result<String, rmcp::ErrorData> {
         echo::run(args).await
     }
+}
+
+/* Server/Resources Implementation */
+#[derive(Clone)]
+struct Server {
+    vault_manager: Arc<ResourceManager>,
+    tools: Tools,
 }
 
 impl ServerHandler for Server {
@@ -113,15 +116,30 @@ impl ServerHandler for Server {
     }
 }
 
-pub async fn start() -> Result<(), Box<dyn std::error::Error>> {
+// Configuration for the Obsidian Vault path, loaded from environment variables or testing defaults
+pub struct ServerResourceConfig {
+    vault_path: PathBuf,
+}
+
+impl ServerResourceConfig {
+    /// Loads configuration from the environment for production use
+    pub fn from_env() -> Self {
+        dotenvy::dotenv().ok();
+        let path_str = std::env::var("VAULT_PATH").unwrap_or_else(|_| "./vault".to_string());
+        
+        Self {
+            vault_path: PathBuf::from(path_str),
+        }
+    }
+}
+
+// Function to start the server
+pub async fn start(config: ServerResourceConfig) -> Result<(), Box<dyn std::error::Error>> {
     dotenvy::dotenv().ok();
     
     let transport = (stdin(), stdout());
     
-    let vault_path = std::env::var("VAULT_PATH")
-        .unwrap_or_else(|_| "./vault".to_string());
-    
-    let vault_manager = Arc::new(ResourceManager::new(&vault_path)?);
+    let vault_manager = Arc::new(ResourceManager::new(&config.vault_path)?);
     
     let service = Server {
         vault_manager,

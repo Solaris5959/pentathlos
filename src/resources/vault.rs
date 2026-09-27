@@ -88,14 +88,13 @@ impl ResourceManager {
             if entry.file_type().is_file() {
                 let path = entry.path();
                 // Only include Markdown files
-                if path.extension().map_or(false, |ext| ext == "md") {
-                    if let Ok(relative_path) = path.strip_prefix(&self.vault_root) {
+                if path.extension().is_some_and(|ext| ext == "md")
+                    && let Ok(relative_path) = path.strip_prefix(&self.vault_root) {
                         // Normalize paths to forward slashes for cross-platform consistency
                         let display_path = relative_path.to_string_lossy().replace("\\", "/");
                         index.push_str(&format!("- {}\n", display_path));
                         file_count += 1;
                     }
-                }
             }
         }
 

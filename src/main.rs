@@ -8,7 +8,8 @@ mod utils;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    server::start().await?;
+    let config = server::ServerResourceConfig::from_env();
+    server::start(config).await?;
 
     Ok(())
 }
