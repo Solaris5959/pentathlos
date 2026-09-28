@@ -3,7 +3,7 @@
 ## P0 — Core / Essential
 
 - [x] Expose vault directories and files as MCP Resources
-- [ ] Tool to read notes
+- [x] Tool to read notes
 - [ ] Tool to create new notes
 - [ ] Tool to append text to existing notes
 - [ ] Tool to search & replace text within a note (replaces granular list/task editing)
@@ -18,6 +18,7 @@
 - [ ] Configurable excluded paths
 - [ ] Structured MCP tool outputs
 - [ ] Consistent MCP error handling
+- [ ] Basic unit tests for every added feature in P0
 
 ## P1 — Obsidian Semantics & Properties
 

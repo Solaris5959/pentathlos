@@ -40,6 +40,11 @@ pub struct ResourceManager {
 }
 
 impl ResourceManager {
+    /// Getter for the vault root path
+    pub fn vault_root(&self) -> &Path {
+        self.vault_root.as_path()
+    }
+
     /// Initializes the manager and canonicalizes the vault root to establish
     /// a firm security boundary against directory traversal.
     pub fn new<P: AsRef<Path>>(vault_root: P) -> Result<Self, io::Error> {

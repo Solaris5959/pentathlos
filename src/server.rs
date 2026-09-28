@@ -14,10 +14,13 @@ use rmcp::service::RequestContext;
 
 use crate::resources::vault::{ResourceError, ResourceManager};
 use crate::tools::echo::{self, EchoParams};
+use crate::tools::files;
 
 /* Tools Implementation */
 #[derive(Clone)]
-struct Tools;
+struct Tools {
+    vault_manager: Arc<ResourceManager>,
+}
 
 #[tool_router(server_handler)]
 impl Tools {
@@ -27,6 +30,55 @@ impl Tools {
         Parameters(args): Parameters<EchoParams>,
     ) -> Result<String, rmcp::ErrorData> {
         echo::run(args).await
+    }
+
+    #[tool(
+        description = "Get a complete list of all available markdown file URIs in the Obsidian vault."
+    )]
+    async fn list_vault_files(
+        &self,
+        Parameters(args): Parameters<files::ListFilesParams>,
+    ) -> Result<String, rmcp::ErrorData> {
+        // Map the internal String error to rmcp::ErrorData
+        files::list_files(args, self.vault_manager.vault_root())
+            .await
+            .map_err(|e| rmcp::ErrorData {
+                code: rmcp::model::ErrorCode(-32602), // Invalid params / general error code
+                message: e.into(),
+                data: None,
+            })
+    }
+
+    #[tool(
+        description = "Read the contents of a single file from the vault. Provide the exact vault:// URI."
+    )]
+    async fn read_vault_file(
+        &self,
+        Parameters(args): Parameters<files::ReadFileParams>,
+    ) -> Result<String, rmcp::ErrorData> {
+        files::read_file(args, self.vault_manager.vault_root())
+            .await
+            .map_err(|e| rmcp::ErrorData {
+                code: rmcp::model::ErrorCode(-32602),
+                message: e.into(),
+                data: None,
+            })
+    }
+
+    #[tool(
+        description = "Read the contents of multiple vault files simultaneously. Always prefer this over read_vault_file when you need to inspect more than one file."
+    )]
+    async fn read_multiple_vault_files(
+        &self,
+        Parameters(args): Parameters<files::ReadFilesParams>,
+    ) -> Result<String, rmcp::ErrorData> {
+        files::read_files(args, self.vault_manager.vault_root())
+            .await
+            .map_err(|e| rmcp::ErrorData {
+                code: rmcp::model::ErrorCode(-32602),
+                message: e.into(),
+                data: None,
+            })
     }
 }
 
@@ -143,9 +195,13 @@ pub async fn start(config: ServerResourceConfig) -> Result<(), Box<dyn std::erro
 
     let vault_manager = Arc::new(ResourceManager::new(&config.vault_path)?);
 
+    let tools = Tools {
+        vault_manager: vault_manager.clone(),
+    };
+
     let service = Server {
         vault_manager,
-        tools: Tools,
+        tools,
     };
 
     let server = service.serve(transport).await?;
