@@ -19,6 +19,12 @@ pub struct ReadFilesParams {
     pub uris: Vec<String>,
 }
 
+#[derive(Deserialize, JsonSchema)]
+pub struct CreateFileParams {
+    pub uri: String,
+    pub content: String,
+}
+
 // --- Helper Functions ---
 
 fn resolve_uri(uri: &str, vault_root: &Path) -> Result<PathBuf, String> {
@@ -87,4 +93,30 @@ pub async fn read_files(args: ReadFilesParams, vault_root: &Path) -> Result<Stri
     }
 
     Ok(results.trim_end().to_string())
+}
+
+pub async fn create_file(args: CreateFileParams, vault_root: &Path) -> Result<String, String> {
+    // Resolve the URI to a safe local path using your existing helper
+    let path = resolve_uri(&args.uri, vault_root)?;
+
+    // Prevent accidental overwrites of existing notes
+    if path.exists() {
+        return Err(format!("File already exists at URI: {}", args.uri));
+    }
+
+    // As Obsidian allows nested directories, ensure parent directory exists before writing.
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|e| {
+            format!(
+                "Failed to create parent directories for {}: {}",
+                args.uri, e
+            )
+        })?;
+    }
+
+    // Write the content to the file
+    fs::write(&path, args.content)
+        .map_err(|e| format!("Failed to write file {}: {}", args.uri, e))?;
+
+    Ok(format!("Successfully created {}", args.uri))
 }
