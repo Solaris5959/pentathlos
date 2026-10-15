@@ -1,6 +1,6 @@
 use schemars::JsonSchema;
 use serde::Deserialize;
-use std::fs;
+use std::fs::{self};
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
@@ -11,11 +11,15 @@ pub struct ListFilesParams {} // Empty struct to satisfy the Parameters extracto
 
 #[derive(Deserialize, JsonSchema)]
 pub struct ReadFileParams {
+    #[schemars(description = "The target URI of the note to be read, starting with vault:// ")]
     pub uri: String,
 }
 
 #[derive(Deserialize, JsonSchema)]
 pub struct ReadFilesParams {
+    #[schemars(
+        description = "The target list of URIs of the notes to be read, starting with vault:// "
+    )]
     pub uris: Vec<String>,
 }
 
@@ -23,8 +27,16 @@ pub struct ReadFilesParams {
 pub struct CreateFileParams {
     #[schemars(description = "The target URI for the new note, starting with vault://")]
     pub uri: String,
-    #[schemars(description = "The complete markdown content to write. DO NOT include a top-level `# Title` heading, as Obsidian automatically displays the filename as the H1.")]
+    #[schemars(
+        description = "The complete markdown content to write. DO NOT include a top-level `# Title` heading, as Obsidian automatically displays the filename as the H1."
+    )]
     pub content: String,
+}
+
+#[derive(Deserialize, JsonSchema)]
+pub struct DeleteFileParams {
+    #[schemars(description = "The target URI for the note to be deleted, starting with vault://")]
+    pub uri: String,
 }
 
 // --- Helper Functions ---
@@ -121,4 +133,16 @@ pub async fn create_file(args: CreateFileParams, vault_root: &Path) -> Result<St
         .map_err(|e| format!("Failed to write file {}: {}", args.uri, e))?;
 
     Ok(format!("Successfully created {}", args.uri))
+}
+
+pub async fn delete_file(args: DeleteFileParams, vault_root: &Path) -> Result<String, String> {
+    let path = resolve_uri(&args.uri, vault_root)?;
+
+    if path.exists() {
+        fs::remove_file(path).map_err(|e| format!("Failed to delete file {}: {}", args.uri, e))?;
+
+        Ok(format!("Successfully deleted {}", args.uri))
+    } else {
+        Err(format!("File does not exists at URI: {}", args.uri))
+    }
 }
