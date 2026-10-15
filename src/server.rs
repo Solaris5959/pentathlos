@@ -82,7 +82,7 @@ impl Tools {
     }
 
     #[tool(
-        description = "Creates a new markdown file at the specified URI. Fails immediately if the file already exists—do not use this to overwrite or update notes. Parent directories are created automatically. URI must begin with vault://"
+        description = "Creates a new markdown file at the specified URI. Fails immediately if the file already exists. Parent directories are created automatically. URI must begin with vault://. CRITICAL: Do NOT include a `# Heading 1` title at the top of the content; Obsidian auto-generates the title from the filename."
     )]
     async fn create_vault_file(
         &self,

@@ -4,7 +4,7 @@
 
 - [x] Expose vault directories and files as MCP Resources
 - [x] Tool to read notes
-- [ ] Tool to create new notes
+- [x] Tool to create new notes
 - [ ] Tool to append text to existing notes
 - [ ] Tool to search & replace text within a note (replaces granular list/task editing)
 - [ ] Tool to delete notes

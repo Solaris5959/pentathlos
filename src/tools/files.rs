@@ -21,7 +21,9 @@ pub struct ReadFilesParams {
 
 #[derive(Deserialize, JsonSchema)]
 pub struct CreateFileParams {
+    #[schemars(description = "The target URI for the new note, starting with vault://")]
     pub uri: String,
+    #[schemars(description = "The complete markdown content to write. DO NOT include a top-level `# Title` heading, as Obsidian automatically displays the filename as the H1.")]
     pub content: String,
 }
 
