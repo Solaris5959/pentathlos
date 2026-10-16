@@ -39,6 +39,18 @@ pub struct DeleteFileParams {
     pub uri: String,
 }
 
+#[derive(Deserialize, JsonSchema)]
+pub struct AppendFileParams {
+    #[schemars(
+        description = "The target URI for the note to be appended to, starting with vault://"
+    )]
+    pub uri: String,
+    #[schemars(
+        description = "The additional markdown content to be appended to the existing file contents."
+    )]
+    pub content: String,
+}
+
 // --- Helper Functions ---
 
 fn resolve_uri(uri: &str, vault_root: &Path) -> Result<PathBuf, String> {
@@ -142,6 +154,22 @@ pub async fn delete_file(args: DeleteFileParams, vault_root: &Path) -> Result<St
         fs::remove_file(path).map_err(|e| format!("Failed to delete file {}: {}", args.uri, e))?;
 
         Ok(format!("Successfully deleted {}", args.uri))
+    } else {
+        Err(format!("File does not exists at URI: {}", args.uri))
+    }
+}
+
+pub async fn append_to_file(args: AppendFileParams, vault_root: &Path) -> Result<String, String> {
+    let path = resolve_uri(&args.uri, vault_root)?;
+
+    if let Ok(mut new_content) = fs::read_to_string(&path) {
+        new_content.push('\n');
+        new_content.push_str(&args.content);
+
+        fs::write(path, new_content)
+            .map_err(|e| format!("Failed to delete file {}: {}", args.uri, e))?;
+
+        Ok(format!("Successfully appended content to {}", args.uri))
     } else {
         Err(format!("File does not exists at URI: {}", args.uri))
     }

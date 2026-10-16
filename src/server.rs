@@ -112,6 +112,22 @@ impl Tools {
                 data: None,
             })
     }
+
+    #[tool(
+        description = "Appends the provided content to the markdown file at the specified URI. Fails immediately if the file at the provided URI does not exist. URI must begin with vault://"
+    )]
+    async fn append_vault_file(
+        &self,
+        Parameters(args): Parameters<files::AppendFileParams>,
+    ) -> Result<String, rmcp::ErrorData> {
+        files::append_to_file(args, self.vault_manager.vault_root())
+            .await
+            .map_err(|e| rmcp::ErrorData {
+                code: rmcp::model::ErrorCode(-32602),
+                message: e.into(),
+                data: None,
+            })
+    }
 }
 
 /* Server/Resources Implementation */
