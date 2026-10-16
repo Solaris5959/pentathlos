@@ -7,7 +7,7 @@
 - [x] Tool to create new notes
 - [ ] Tool to append text to existing notes
 - [ ] Tool to search & replace text within a note (replaces granular list/task editing)
-- [ ] Tool to delete notes
+- [x] Tool to delete notes
 - [ ] Tool to move/rename files (without auto-updating references)
 - [ ] Tool to search vault by filename
 - [ ] Tool to search vault by text content
