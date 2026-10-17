@@ -3,7 +3,8 @@ mod common;
 use common::TestVault;
 use pentathlos::tools::echo;
 use pentathlos::tools::files::{
-    self, CreateFileParams, DeleteFileParams, ListFilesParams, ReadFileParams, ReadFilesParams, AppendFileParams, ModifyFileParams,
+    self, AppendFileParams, CreateFileParams, DeleteFileParams, ListFilesParams, ModifyFileParams,
+    ReadFileParams, ReadFilesParams,
 };
 use std::fs::{self};
 
@@ -269,7 +270,7 @@ async fn test_delete_file_fails_when_deleting_directory() {
 async fn test_append_file_success() {
     let vault = TestVault::new();
     let file_path = vault.path().join("Home.md");
-    
+
     let params = AppendFileParams {
         uri: "vault://Home.md".to_string(),
         new_content: "Appended content.".to_string(),
@@ -278,7 +279,10 @@ async fn test_append_file_success() {
     let result = files::append(params, &vault.path()).await;
 
     assert!(result.is_ok());
-    assert_eq!(result.unwrap(), "Successfully appended content to vault://Home.md");
+    assert_eq!(
+        result.unwrap(),
+        "Successfully appended content to vault://Home.md"
+    );
 
     // Verify it was actually appended
     let content = fs::read_to_string(file_path).unwrap();
@@ -296,10 +300,10 @@ async fn test_append_file_fails_if_not_exists() {
     let result = files::append(params, &vault.path()).await;
 
     assert!(result.is_err());
-    
+
     // Extract the error string once so we don't move the Result twice
     let error_msg = result.unwrap_err();
-    
+
     assert!(
         error_msg.contains("File does not exists at URI: vault://MissingNote.md")
             || error_msg.contains("No such file")
@@ -323,7 +327,7 @@ async fn test_append_file_fails_invalid_uri() {
 #[tokio::test]
 async fn test_modify_file_success_same_line_count() {
     let vault = TestVault::new();
-    
+
     // Setup a multi-line file
     let params_create = CreateFileParams {
         uri: "vault://ModifyTest.md".to_string(),
@@ -366,7 +370,10 @@ async fn test_modify_file_success_insert_more_lines() {
     files::modify(params, &vault.path()).await.unwrap();
 
     let content = fs::read_to_string(vault.path().join("ExpandTest.md")).unwrap();
-    assert_eq!(content, "Line 1\nInserted A\nInserted B\nInserted C\nLine 3");
+    assert_eq!(
+        content,
+        "Line 1\nInserted A\nInserted B\nInserted C\nLine 3"
+    );
 }
 
 #[tokio::test]

@@ -55,9 +55,7 @@ pub struct AppendFileParams {
 
 #[derive(Deserialize, JsonSchema)]
 pub struct ModifyFileParams {
-    #[schemars(
-        description = "The target URI for the note to be modified, starting with vault://"
-    )]
+    #[schemars(description = "The target URI for the note to be modified, starting with vault://")]
     pub uri: String,
 
     #[schemars(
@@ -65,9 +63,7 @@ pub struct ModifyFileParams {
     )]
     pub new_content: String,
 
-    #[schemars(
-        description = "The 1-based line number where the replacement should begin."
-    )]
+    #[schemars(description = "The 1-based line number where the replacement should begin.")]
     pub start_line: u32,
 
     #[schemars(
