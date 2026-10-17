@@ -3,7 +3,7 @@ mod common;
 use common::TestVault;
 use pentathlos::tools::echo;
 use pentathlos::tools::files::{
-    self, AppendFileParams, CreateFileParams, DeleteFileParams, ListFilesParams, EditFileParams,
+    self, AppendFileParams, CreateFileParams, DeleteFileParams, EditFileParams, ListFilesParams,
     ReadFileParams, ReadFilesParams,
 };
 use std::fs::{self};
@@ -428,7 +428,7 @@ async fn test_modify_file_out_of_bounds() {
     };
     let result_overflow = files::edit(params_overflow, &vault.path()).await;
     assert!(result_overflow.is_ok());
-    
+
     let content = fs::read_to_string(vault.path().join("BoundsTest.md")).unwrap();
     assert_eq!(content, "Replaced entirely\n");
 }

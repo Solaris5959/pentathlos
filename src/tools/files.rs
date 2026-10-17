@@ -212,11 +212,10 @@ pub async fn edit(args: EditFileParams, vault_root: &Path) -> Result<String, Str
     // Line start and end numbers for the file segment to be replaced
     let start_idx = args.start_line.saturating_sub(1) as usize;
     let mut end_idx = args.end_line as usize; // Don't decrement end, as splice is exclusive at upper bound
-    if end_idx > lines.len() { // Clamp end index to end of file
+    if end_idx > lines.len() {
+        // Clamp end index to end of file
         end_idx = lines.len();
     }
-
-
 
     // Check bounds validity
     if start_idx > lines.len() || end_idx > lines.len() || start_idx >= end_idx {
@@ -233,7 +232,8 @@ pub async fn edit(args: EditFileParams, vault_root: &Path) -> Result<String, Str
 
     // Join vector to create the updated file content
     let mut updated_content = lines.join("\n");
-    if !updated_content.ends_with('\n') { // ensure updated file ends in newline
+    if !updated_content.ends_with('\n') {
+        // ensure updated file ends in newline
         updated_content.push('\n');
     }
 
@@ -242,6 +242,9 @@ pub async fn edit(args: EditFileParams, vault_root: &Path) -> Result<String, Str
 
     Ok(format!(
         "Successfully replaced lines {}-{} in {}.\n\nWARNING/NOTE: The file now contains {} total lines. If you left orphaned text at the bottom, use the edit tool again to remove it.",
-        args.start_line, args.end_line, args.uri, lines.len()
+        args.start_line,
+        args.end_line,
+        args.uri,
+        lines.len()
     ))
 }
