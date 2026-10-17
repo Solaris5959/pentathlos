@@ -3,7 +3,7 @@ mod common;
 use common::TestVault;
 use pentathlos::tools::echo;
 use pentathlos::tools::files::{
-    self, AppendFileParams, CreateFileParams, DeleteFileParams, ListFilesParams, ModifyFileParams,
+    self, AppendFileParams, CreateFileParams, DeleteFileParams, ListFilesParams, EditFileParams,
     ReadFileParams, ReadFilesParams,
 };
 use std::fs::{self};
@@ -336,18 +336,18 @@ async fn test_modify_file_success_same_line_count() {
     files::create(params_create, &vault.path()).await.unwrap();
 
     // Replace lines 2 to 3
-    let params = ModifyFileParams {
+    let params = EditFileParams {
         uri: "vault://ModifyTest.md".to_string(),
         start_line: 2,
         end_line: 3,
         new_content: "New Line 2\nNew Line 3".to_string(),
     };
 
-    let result = files::modify(params, &vault.path()).await;
+    let result = files::edit(params, &vault.path()).await;
     assert!(result.is_ok());
 
     let content = fs::read_to_string(vault.path().join("ModifyTest.md")).unwrap();
-    assert_eq!(content, "Line 1\nNew Line 2\nNew Line 3\nLine 4");
+    assert_eq!(content, "Line 1\nNew Line 2\nNew Line 3\nLine 4\n");
 }
 
 #[tokio::test]
@@ -355,24 +355,24 @@ async fn test_modify_file_success_insert_more_lines() {
     let vault = TestVault::new();
     let params_create = CreateFileParams {
         uri: "vault://ExpandTest.md".to_string(),
-        content: "Line 1\nLine 2\nLine 3".to_string(),
+        content: "Line 1\nLine 2\nLine 3\n".to_string(),
     };
     files::create(params_create, &vault.path()).await.unwrap();
 
     // Replace 1 line (Line 2) with 3 lines
-    let params = ModifyFileParams {
+    let params = EditFileParams {
         uri: "vault://ExpandTest.md".to_string(),
         start_line: 2,
         end_line: 2,
         new_content: "Inserted A\nInserted B\nInserted C".to_string(),
     };
 
-    files::modify(params, &vault.path()).await.unwrap();
+    files::edit(params, &vault.path()).await.unwrap();
 
     let content = fs::read_to_string(vault.path().join("ExpandTest.md")).unwrap();
     assert_eq!(
         content,
-        "Line 1\nInserted A\nInserted B\nInserted C\nLine 3"
+        "Line 1\nInserted A\nInserted B\nInserted C\nLine 3\n"
     );
 }
 
@@ -386,17 +386,17 @@ async fn test_modify_file_success_remove_lines() {
     files::create(params_create, &vault.path()).await.unwrap();
 
     // Replace 3 lines (2-4) with 1 line
-    let params = ModifyFileParams {
+    let params = EditFileParams {
         uri: "vault://ShrinkTest.md".to_string(),
         start_line: 2,
         end_line: 4,
         new_content: "Consolidated Line".to_string(),
     };
 
-    files::modify(params, &vault.path()).await.unwrap();
+    files::edit(params, &vault.path()).await.unwrap();
 
     let content = fs::read_to_string(vault.path().join("ShrinkTest.md")).unwrap();
-    assert_eq!(content, "Line 1\nConsolidated Line");
+    assert_eq!(content, "Line 1\nConsolidated Line\n");
 }
 
 #[tokio::test]
@@ -409,39 +409,41 @@ async fn test_modify_file_out_of_bounds() {
     files::create(params_create, &vault.path()).await.unwrap();
 
     // Test start > end
-    let params_reversed = ModifyFileParams {
+    let params_reversed = EditFileParams {
         uri: "vault://BoundsTest.md".to_string(),
         start_line: 2,
         end_line: 1,
         new_content: "Invalid".to_string(),
     };
-    let result = files::modify(params_reversed, &vault.path()).await;
+    let result = files::edit(params_reversed, &vault.path()).await;
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("Bounds error"));
 
     // Test end > lines.len()
-    let params_overflow = ModifyFileParams {
+    let params_overflow = EditFileParams {
         uri: "vault://BoundsTest.md".to_string(),
         start_line: 1,
         end_line: 10,
-        new_content: "Invalid".to_string(),
+        new_content: "Replaced entirely".to_string(),
     };
-    let result_overflow = files::modify(params_overflow, &vault.path()).await;
-    assert!(result_overflow.is_err());
-    assert!(result_overflow.unwrap_err().contains("Bounds error"));
+    let result_overflow = files::edit(params_overflow, &vault.path()).await;
+    assert!(result_overflow.is_ok());
+    
+    let content = fs::read_to_string(vault.path().join("BoundsTest.md")).unwrap();
+    assert_eq!(content, "Replaced entirely\n");
 }
 
 #[tokio::test]
 async fn test_modify_file_fails_if_not_exists() {
     let vault = TestVault::new();
-    let params = ModifyFileParams {
+    let params = EditFileParams {
         uri: "vault://MissingNote.md".to_string(),
         start_line: 1,
         end_line: 1,
         new_content: "Will fail".to_string(),
     };
 
-    let result = files::modify(params, &vault.path()).await;
+    let result = files::edit(params, &vault.path()).await;
 
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("Failed to read file"));

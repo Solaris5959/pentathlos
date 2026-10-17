@@ -54,7 +54,7 @@ pub struct AppendFileParams {
 }
 
 #[derive(Deserialize, JsonSchema)]
-pub struct ModifyFileParams {
+pub struct EditFileParams {
     #[schemars(description = "The target URI for the note to be modified, starting with vault://")]
     pub uri: String,
 
@@ -196,7 +196,7 @@ pub async fn append(args: AppendFileParams, vault_root: &Path) -> Result<String,
     }
 }
 
-pub async fn modify(args: ModifyFileParams, vault_root: &Path) -> Result<String, String> {
+pub async fn edit(args: EditFileParams, vault_root: &Path) -> Result<String, String> {
     let path = resolve_uri(&args.uri, vault_root)?;
 
     // Read current file content
@@ -211,7 +211,12 @@ pub async fn modify(args: ModifyFileParams, vault_root: &Path) -> Result<String,
 
     // Line start and end numbers for the file segment to be replaced
     let start_idx = args.start_line.saturating_sub(1) as usize;
-    let end_idx = args.end_line as usize; // Don't decrement end, as splice is exclusive at upper bound
+    let mut end_idx = args.end_line as usize; // Don't decrement end, as splice is exclusive at upper bound
+    if end_idx > lines.len() { // Clamp end index to end of file
+        end_idx = lines.len();
+    }
+
+
 
     // Check bounds validity
     if start_idx > lines.len() || end_idx > lines.len() || start_idx >= end_idx {
@@ -227,13 +232,16 @@ pub async fn modify(args: ModifyFileParams, vault_root: &Path) -> Result<String,
     lines.splice(start_idx..end_idx, new_lines);
 
     // Join vector to create the updated file content
-    let updated_content = lines.join("\n");
+    let mut updated_content = lines.join("\n");
+    if !updated_content.ends_with('\n') { // ensure updated file ends in newline
+        updated_content.push('\n');
+    }
 
     // Write to file with updated contents
     fs::write(&path, updated_content).map_err(|e| format!("Failed to update file: {}", e))?;
 
     Ok(format!(
-        "Successfully replaced lines {}-{} in {}",
-        args.start_line, args.end_line, args.uri
+        "Successfully replaced lines {}-{} in {}.\n\nWARNING/NOTE: The file now contains {} total lines. If you left orphaned text at the bottom, use the edit tool again to remove it.",
+        args.start_line, args.end_line, args.uri, lines.len()
     ))
 }

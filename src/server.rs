@@ -114,7 +114,7 @@ impl Tools {
     }
 
     #[tool(
-        description = "Appends the provided content to the markdown file at the specified URI. Fails immediately if the file at the provided URI does not exist. URI must begin with vault://"
+        description = "Appends the provided content to the markdown file at the specified URI. Always use the read tool to verify the exact contents of a file before and after making edits. Do not assume the file state based on previous tool calls or chat history. Fails immediately if the file at the provided URI does not exist. URI must begin with vault://"
     )]
     async fn append_vault_file(
         &self,
@@ -130,13 +130,13 @@ impl Tools {
     }
 
     #[tool(
-        description = "Replaces a specific range of lines in a vault file with new content. Uses 1-based indexing for start_line and end_line. The number of inserted lines does not need to match the number of removed lines. Use this for targeted, granular edits instead of rewriting the entire file."
+        description = "Edits a vault file, replacing a specific range of lines with new content. Always use the read tool to verify the exact contents of a file before and after making edits. Do not assume the file state based on previous tool calls or chat history. Uses 1-based indexing for start_line and end_line. The number of inserted lines does not need to match the number of removed lines. Use this for targeted, granular edits instead of rewriting the entire file."
     )]
-    async fn modify_vault_file(
+    async fn edit_vault_file(
         &self,
-        Parameters(args): Parameters<files::ModifyFileParams>,
+        Parameters(args): Parameters<files::EditFileParams>,
     ) -> Result<String, rmcp::ErrorData> {
-        files::modify(args, self.vault_manager.vault_root())
+        files::edit(args, self.vault_manager.vault_root())
             .await
             .map_err(|e| rmcp::ErrorData {
                 code: rmcp::model::ErrorCode(-32602),
