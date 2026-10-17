@@ -3,7 +3,7 @@ mod common;
 use common::TestVault;
 use pentathlos::tools::echo;
 use pentathlos::tools::files::{
-    self, CreateFileParams, DeleteFileParams, ListFilesParams, ReadFileParams, ReadFilesParams,
+    self, CreateFileParams, DeleteFileParams, ListFilesParams, ReadFileParams, ReadFilesParams, AppendFileParams, ModifyFileParams,
 };
 use std::fs::{self};
 
@@ -25,7 +25,7 @@ async fn test_list_files_returns_all_markdown_uris() {
     let params = ListFilesParams {};
 
     // Passing vault.path() directly ensures parallel safety
-    let result = files::list_files(params, &vault.path())
+    let result = files::list(params, &vault.path())
         .await
         .expect("Failed to list files");
 
@@ -105,7 +105,7 @@ async fn test_create_file_success_root() {
         content: "# New Note\nContent here.".to_string(),
     };
 
-    let result = files::create_file(params, &vault.path()).await;
+    let result = files::create(params, &vault.path()).await;
 
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), "Successfully created vault://NewNote.md");
@@ -127,7 +127,7 @@ async fn test_create_file_success_nested_directories() {
         content: "Deep content".to_string(),
     };
 
-    let result = files::create_file(params, &vault.path()).await;
+    let result = files::create(params, &vault.path()).await;
 
     assert!(result.is_ok());
 
@@ -146,7 +146,7 @@ async fn test_create_file_fails_if_already_exists() {
         content: "Attempted overwrite".to_string(),
     };
 
-    let result = files::create_file(params, &vault.path()).await;
+    let result = files::create(params, &vault.path()).await;
 
     assert!(result.is_err());
     assert!(
@@ -168,7 +168,7 @@ async fn test_create_file_fails_invalid_uri() {
         content: "Content".to_string(),
     };
 
-    let result = files::create_file(params, &vault.path()).await;
+    let result = files::create(params, &vault.path()).await;
 
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("URI must start with vault://"));
@@ -184,7 +184,7 @@ async fn test_create_file_fails_parent_is_a_file() {
         content: "Content".to_string(),
     };
 
-    let result = files::create_file(params, &vault.path()).await;
+    let result = files::create(params, &vault.path()).await;
 
     assert!(result.is_err());
     assert!(
@@ -208,7 +208,7 @@ async fn test_delete_file_success() {
         uri: "vault://Home.md".to_string(),
     };
 
-    let result = files::delete_file(params, &vault.path()).await;
+    let result = files::delete(params, &vault.path()).await;
 
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), "Successfully deleted vault://Home.md");
@@ -224,7 +224,7 @@ async fn test_delete_file_fails_if_not_exists() {
         uri: "vault://MissingNote.md".to_string(),
     };
 
-    let result = files::delete_file(params, &vault.path()).await;
+    let result = files::delete(params, &vault.path()).await;
 
     assert!(result.is_err());
     assert!(
@@ -241,7 +241,7 @@ async fn test_delete_file_fails_invalid_uri() {
         uri: "invalid://Home.md".to_string(),
     };
 
-    let result = files::delete_file(params, &vault.path()).await;
+    let result = files::delete(params, &vault.path()).await;
 
     assert!(result.is_err());
     assert!(result.unwrap_err().contains("URI must start with vault://"));
@@ -255,7 +255,7 @@ async fn test_delete_file_fails_when_deleting_directory() {
         uri: "vault://Projects".to_string(),
     };
 
-    let result = files::delete_file(params, &vault.path()).await;
+    let result = files::delete(params, &vault.path()).await;
 
     // fs::remove_file fails when called on a directory (requires fs::remove_dir)
     assert!(result.is_err());
@@ -263,4 +263,179 @@ async fn test_delete_file_fails_when_deleting_directory() {
 
     // Verify the directory is still there
     assert!(vault.path().join("Projects").is_dir());
+}
+
+#[tokio::test]
+async fn test_append_file_success() {
+    let vault = TestVault::new();
+    let file_path = vault.path().join("Home.md");
+    
+    let params = AppendFileParams {
+        uri: "vault://Home.md".to_string(),
+        new_content: "Appended content.".to_string(),
+    };
+
+    let result = files::append(params, &vault.path()).await;
+
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), "Successfully appended content to vault://Home.md");
+
+    // Verify it was actually appended
+    let content = fs::read_to_string(file_path).unwrap();
+    assert_eq!(content, "# Home Note\nAppended content.");
+}
+
+#[tokio::test]
+async fn test_append_file_fails_if_not_exists() {
+    let vault = TestVault::new();
+    let params = AppendFileParams {
+        uri: "vault://MissingNote.md".to_string(),
+        new_content: "Will fail".to_string(),
+    };
+
+    let result = files::append(params, &vault.path()).await;
+
+    assert!(result.is_err());
+    
+    // Extract the error string once so we don't move the Result twice
+    let error_msg = result.unwrap_err();
+    
+    assert!(
+        error_msg.contains("File does not exists at URI: vault://MissingNote.md")
+            || error_msg.contains("No such file")
+    );
+}
+
+#[tokio::test]
+async fn test_append_file_fails_invalid_uri() {
+    let vault = TestVault::new();
+    let params = AppendFileParams {
+        uri: "invalid://Home.md".to_string(),
+        new_content: "Content".to_string(),
+    };
+
+    let result = files::append(params, &vault.path()).await;
+
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("URI must start with vault://"));
+}
+
+#[tokio::test]
+async fn test_modify_file_success_same_line_count() {
+    let vault = TestVault::new();
+    
+    // Setup a multi-line file
+    let params_create = CreateFileParams {
+        uri: "vault://ModifyTest.md".to_string(),
+        content: "Line 1\nLine 2\nLine 3\nLine 4".to_string(),
+    };
+    files::create(params_create, &vault.path()).await.unwrap();
+
+    // Replace lines 2 to 3
+    let params = ModifyFileParams {
+        uri: "vault://ModifyTest.md".to_string(),
+        start_line: 2,
+        end_line: 3,
+        new_content: "New Line 2\nNew Line 3".to_string(),
+    };
+
+    let result = files::modify(params, &vault.path()).await;
+    assert!(result.is_ok());
+
+    let content = fs::read_to_string(vault.path().join("ModifyTest.md")).unwrap();
+    assert_eq!(content, "Line 1\nNew Line 2\nNew Line 3\nLine 4");
+}
+
+#[tokio::test]
+async fn test_modify_file_success_insert_more_lines() {
+    let vault = TestVault::new();
+    let params_create = CreateFileParams {
+        uri: "vault://ExpandTest.md".to_string(),
+        content: "Line 1\nLine 2\nLine 3".to_string(),
+    };
+    files::create(params_create, &vault.path()).await.unwrap();
+
+    // Replace 1 line (Line 2) with 3 lines
+    let params = ModifyFileParams {
+        uri: "vault://ExpandTest.md".to_string(),
+        start_line: 2,
+        end_line: 2,
+        new_content: "Inserted A\nInserted B\nInserted C".to_string(),
+    };
+
+    files::modify(params, &vault.path()).await.unwrap();
+
+    let content = fs::read_to_string(vault.path().join("ExpandTest.md")).unwrap();
+    assert_eq!(content, "Line 1\nInserted A\nInserted B\nInserted C\nLine 3");
+}
+
+#[tokio::test]
+async fn test_modify_file_success_remove_lines() {
+    let vault = TestVault::new();
+    let params_create = CreateFileParams {
+        uri: "vault://ShrinkTest.md".to_string(),
+        content: "Line 1\nLine 2\nLine 3\nLine 4".to_string(),
+    };
+    files::create(params_create, &vault.path()).await.unwrap();
+
+    // Replace 3 lines (2-4) with 1 line
+    let params = ModifyFileParams {
+        uri: "vault://ShrinkTest.md".to_string(),
+        start_line: 2,
+        end_line: 4,
+        new_content: "Consolidated Line".to_string(),
+    };
+
+    files::modify(params, &vault.path()).await.unwrap();
+
+    let content = fs::read_to_string(vault.path().join("ShrinkTest.md")).unwrap();
+    assert_eq!(content, "Line 1\nConsolidated Line");
+}
+
+#[tokio::test]
+async fn test_modify_file_out_of_bounds() {
+    let vault = TestVault::new();
+    let params_create = CreateFileParams {
+        uri: "vault://BoundsTest.md".to_string(),
+        content: "Line 1\nLine 2".to_string(),
+    };
+    files::create(params_create, &vault.path()).await.unwrap();
+
+    // Test start > end
+    let params_reversed = ModifyFileParams {
+        uri: "vault://BoundsTest.md".to_string(),
+        start_line: 2,
+        end_line: 1,
+        new_content: "Invalid".to_string(),
+    };
+    let result = files::modify(params_reversed, &vault.path()).await;
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("Bounds error"));
+
+    // Test end > lines.len()
+    let params_overflow = ModifyFileParams {
+        uri: "vault://BoundsTest.md".to_string(),
+        start_line: 1,
+        end_line: 10,
+        new_content: "Invalid".to_string(),
+    };
+    let result_overflow = files::modify(params_overflow, &vault.path()).await;
+    assert!(result_overflow.is_err());
+    assert!(result_overflow.unwrap_err().contains("Bounds error"));
+}
+
+#[tokio::test]
+async fn test_modify_file_fails_if_not_exists() {
+    let vault = TestVault::new();
+    let params = ModifyFileParams {
+        uri: "vault://MissingNote.md".to_string(),
+        start_line: 1,
+        end_line: 1,
+        new_content: "Will fail".to_string(),
+    };
+
+    let result = files::modify(params, &vault.path()).await;
+
+    assert!(result.is_err());
+    assert!(result.unwrap_err().contains("Failed to read file"));
 }

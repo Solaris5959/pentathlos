@@ -40,7 +40,7 @@ impl Tools {
         Parameters(args): Parameters<files::ListFilesParams>,
     ) -> Result<String, rmcp::ErrorData> {
         // Map the internal String error to rmcp::ErrorData
-        files::list_files(args, self.vault_manager.vault_root())
+        files::list(args, self.vault_manager.vault_root())
             .await
             .map_err(|e| rmcp::ErrorData {
                 code: rmcp::model::ErrorCode(-32602), // Invalid params / general error code
@@ -88,7 +88,7 @@ impl Tools {
         &self,
         Parameters(args): Parameters<files::CreateFileParams>,
     ) -> Result<String, rmcp::ErrorData> {
-        files::create_file(args, self.vault_manager.vault_root())
+        files::create(args, self.vault_manager.vault_root())
             .await
             .map_err(|e| rmcp::ErrorData {
                 code: rmcp::model::ErrorCode(-32602),
@@ -104,7 +104,7 @@ impl Tools {
         &self,
         Parameters(args): Parameters<files::DeleteFileParams>,
     ) -> Result<String, rmcp::ErrorData> {
-        files::delete_file(args, self.vault_manager.vault_root())
+        files::delete(args, self.vault_manager.vault_root())
             .await
             .map_err(|e| rmcp::ErrorData {
                 code: rmcp::model::ErrorCode(-32602),
@@ -120,7 +120,23 @@ impl Tools {
         &self,
         Parameters(args): Parameters<files::AppendFileParams>,
     ) -> Result<String, rmcp::ErrorData> {
-        files::append_to_file(args, self.vault_manager.vault_root())
+        files::append(args, self.vault_manager.vault_root())
+            .await
+            .map_err(|e| rmcp::ErrorData {
+                code: rmcp::model::ErrorCode(-32602),
+                message: e.into(),
+                data: None,
+            })
+    }
+
+    #[tool(
+        description = "Replaces a specific range of lines in a vault file with new content. Uses 1-based indexing for start_line and end_line. The number of inserted lines does not need to match the number of removed lines. Use this for targeted, granular edits instead of rewriting the entire file."
+    )]
+    async fn modify_vault_file(
+        &self,
+        Parameters(args): Parameters<files::ModifyFileParams>,
+    ) -> Result<String, rmcp::ErrorData> {
+        files::modify(args, self.vault_manager.vault_root())
             .await
             .map_err(|e| rmcp::ErrorData {
                 code: rmcp::model::ErrorCode(-32602),

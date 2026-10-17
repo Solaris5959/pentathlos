@@ -27,6 +27,7 @@ pub struct ReadFilesParams {
 pub struct CreateFileParams {
     #[schemars(description = "The target URI for the new note, starting with vault://")]
     pub uri: String,
+
     #[schemars(
         description = "The complete markdown content to write. DO NOT include a top-level `# Title` heading, as Obsidian automatically displays the filename as the H1."
     )]
@@ -45,10 +46,34 @@ pub struct AppendFileParams {
         description = "The target URI for the note to be appended to, starting with vault://"
     )]
     pub uri: String,
+
     #[schemars(
         description = "The additional markdown content to be appended to the existing file contents."
     )]
-    pub content: String,
+    pub new_content: String,
+}
+
+#[derive(Deserialize, JsonSchema)]
+pub struct ModifyFileParams {
+    #[schemars(
+        description = "The target URI for the note to be modified, starting with vault://"
+    )]
+    pub uri: String,
+
+    #[schemars(
+        description = "The exact markdown content to insert in place of the removed lines. The number of lines inserted does not need to match the number of lines removed."
+    )]
+    pub new_content: String,
+
+    #[schemars(
+        description = "The 1-based line number where the replacement should begin."
+    )]
+    pub start_line: u32,
+
+    #[schemars(
+        description = "The 1-based line number where the replacement should end (inclusive)."
+    )]
+    pub end_line: u32,
 }
 
 // --- Helper Functions ---
@@ -72,7 +97,7 @@ fn resolve_uri(uri: &str, vault_root: &Path) -> Result<PathBuf, String> {
 
 // --- Tool Handlers ---
 
-pub async fn list_files(_args: ListFilesParams, vault_root: &Path) -> Result<String, String> {
+pub async fn list(_args: ListFilesParams, vault_root: &Path) -> Result<String, String> {
     let mut uris = Vec::new();
 
     for entry in WalkDir::new(vault_root)
@@ -121,7 +146,7 @@ pub async fn read_files(args: ReadFilesParams, vault_root: &Path) -> Result<Stri
     Ok(results.trim_end().to_string())
 }
 
-pub async fn create_file(args: CreateFileParams, vault_root: &Path) -> Result<String, String> {
+pub async fn create(args: CreateFileParams, vault_root: &Path) -> Result<String, String> {
     // Resolve the URI to a safe local path using your existing helper
     let path = resolve_uri(&args.uri, vault_root)?;
 
@@ -147,7 +172,7 @@ pub async fn create_file(args: CreateFileParams, vault_root: &Path) -> Result<St
     Ok(format!("Successfully created {}", args.uri))
 }
 
-pub async fn delete_file(args: DeleteFileParams, vault_root: &Path) -> Result<String, String> {
+pub async fn delete(args: DeleteFileParams, vault_root: &Path) -> Result<String, String> {
     let path = resolve_uri(&args.uri, vault_root)?;
 
     if path.exists() {
@@ -159,18 +184,60 @@ pub async fn delete_file(args: DeleteFileParams, vault_root: &Path) -> Result<St
     }
 }
 
-pub async fn append_to_file(args: AppendFileParams, vault_root: &Path) -> Result<String, String> {
+pub async fn append(args: AppendFileParams, vault_root: &Path) -> Result<String, String> {
     let path = resolve_uri(&args.uri, vault_root)?;
 
-    if let Ok(mut new_content) = fs::read_to_string(&path) {
-        new_content.push('\n');
-        new_content.push_str(&args.content);
+    if let Ok(mut file_content) = fs::read_to_string(&path) {
+        file_content.push('\n');
+        file_content.push_str(&args.new_content);
 
-        fs::write(path, new_content)
+        fs::write(path, file_content)
             .map_err(|e| format!("Failed to delete file {}: {}", args.uri, e))?;
 
         Ok(format!("Successfully appended content to {}", args.uri))
     } else {
         Err(format!("File does not exists at URI: {}", args.uri))
     }
+}
+
+pub async fn modify(args: ModifyFileParams, vault_root: &Path) -> Result<String, String> {
+    let path = resolve_uri(&args.uri, vault_root)?;
+
+    // Read current file content
+    let file_content = fs::read_to_string(&path)
+        .map_err(|e| format!("Failed to read file {}: {}", args.uri, e))?;
+
+    // Split file contents into a vector of lines
+    let mut lines: Vec<&str> = file_content.lines().collect();
+
+    // Split new content into vector of lines
+    let new_lines: Vec<&str> = args.new_content.lines().collect();
+
+    // Line start and end numbers for the file segment to be replaced
+    let start_idx = args.start_line.saturating_sub(1) as usize;
+    let end_idx = args.end_line as usize; // Don't decrement end, as splice is exclusive at upper bound
+
+    // Check bounds validity
+    if start_idx > lines.len() || end_idx > lines.len() || start_idx >= end_idx {
+        return Err(format!(
+            "Bounds error: requested {}-{}, but file only has {} lines.",
+            args.start_line,
+            args.end_line,
+            lines.len()
+        ));
+    }
+
+    // Replace removed line range with new lines, number of lines does not necessarily match
+    lines.splice(start_idx..end_idx, new_lines);
+
+    // Join vector to create the updated file content
+    let updated_content = lines.join("\n");
+
+    // Write to file with updated contents
+    fs::write(&path, updated_content).map_err(|e| format!("Failed to update file: {}", e))?;
+
+    Ok(format!(
+        "Successfully replaced lines {}-{} in {}",
+        args.start_line, args.end_line, args.uri
+    ))
 }
