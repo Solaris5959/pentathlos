@@ -2,7 +2,9 @@
 // MODULES
 // ==========================================
 pub mod echo;
-pub mod files;
+pub mod notes;
+pub mod search;
+pub mod vault;
 
 // ==========================================
 // IMPORTS
@@ -12,5 +14,13 @@ pub mod files;
 // ==========================================
 // FLATTENED IMPORTS
 // ==========================================
-// pub use file_one::SomeImportantStruct;
-// pub use file_two::{my_function, AnotherStruct};
+pub use echo::{EchoParams, run};
+
+// Vault structural tools
+pub use vault::{ListFilesParams, list};
+
+// Individual note lifecycle tools
+pub use notes::{
+    AppendFileParams, CreateFileParams, DeleteFileParams, EditFileParams, ReadFileParams,
+    ReadFilesParams, append, create, delete, edit, read_file, read_files,
+};

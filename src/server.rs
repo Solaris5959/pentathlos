@@ -13,8 +13,7 @@ use rmcp::model::{
 use rmcp::service::RequestContext;
 
 use crate::resources::vault::{ResourceError, ResourceManager};
-use crate::tools::echo::{self, EchoParams};
-use crate::tools::files;
+use crate::tools;
 
 /* Tools Implementation */
 #[derive(Clone)]
@@ -27,9 +26,9 @@ impl Tools {
     #[tool(description = "Echoes a message back to the user")]
     async fn echo(
         &self,
-        Parameters(args): Parameters<EchoParams>,
+        Parameters(args): Parameters<tools::EchoParams>,
     ) -> Result<String, rmcp::ErrorData> {
-        echo::run(args).await
+        tools::run(args).await
     }
 
     #[tool(
@@ -37,10 +36,10 @@ impl Tools {
     )]
     async fn list_vault_files(
         &self,
-        Parameters(args): Parameters<files::ListFilesParams>,
+        Parameters(args): Parameters<tools::ListFilesParams>,
     ) -> Result<String, rmcp::ErrorData> {
         // Map the internal String error to rmcp::ErrorData
-        files::list(args, self.vault_manager.vault_root())
+        tools::list(args, self.vault_manager.vault_root())
             .await
             .map_err(|e| rmcp::ErrorData {
                 code: rmcp::model::ErrorCode(-32602), // Invalid params / general error code
@@ -54,9 +53,9 @@ impl Tools {
     )]
     async fn read_vault_file(
         &self,
-        Parameters(args): Parameters<files::ReadFileParams>,
+        Parameters(args): Parameters<tools::ReadFileParams>,
     ) -> Result<String, rmcp::ErrorData> {
-        files::read_file(args, self.vault_manager.vault_root())
+        tools::read_file(args, self.vault_manager.vault_root())
             .await
             .map_err(|e| rmcp::ErrorData {
                 code: rmcp::model::ErrorCode(-32602),
@@ -70,9 +69,9 @@ impl Tools {
     )]
     async fn read_multiple_vault_files(
         &self,
-        Parameters(args): Parameters<files::ReadFilesParams>,
+        Parameters(args): Parameters<tools::ReadFilesParams>,
     ) -> Result<String, rmcp::ErrorData> {
-        files::read_files(args, self.vault_manager.vault_root())
+        tools::read_files(args, self.vault_manager.vault_root())
             .await
             .map_err(|e| rmcp::ErrorData {
                 code: rmcp::model::ErrorCode(-32602),
@@ -86,9 +85,9 @@ impl Tools {
     )]
     async fn create_vault_file(
         &self,
-        Parameters(args): Parameters<files::CreateFileParams>,
+        Parameters(args): Parameters<tools::CreateFileParams>,
     ) -> Result<String, rmcp::ErrorData> {
-        files::create(args, self.vault_manager.vault_root())
+        tools::create(args, self.vault_manager.vault_root())
             .await
             .map_err(|e| rmcp::ErrorData {
                 code: rmcp::model::ErrorCode(-32602),
@@ -102,9 +101,9 @@ impl Tools {
     )]
     async fn delete_vault_file(
         &self,
-        Parameters(args): Parameters<files::DeleteFileParams>,
+        Parameters(args): Parameters<tools::DeleteFileParams>,
     ) -> Result<String, rmcp::ErrorData> {
-        files::delete(args, self.vault_manager.vault_root())
+        tools::delete(args, self.vault_manager.vault_root())
             .await
             .map_err(|e| rmcp::ErrorData {
                 code: rmcp::model::ErrorCode(-32602),
@@ -118,9 +117,9 @@ impl Tools {
     )]
     async fn append_vault_file(
         &self,
-        Parameters(args): Parameters<files::AppendFileParams>,
+        Parameters(args): Parameters<tools::AppendFileParams>,
     ) -> Result<String, rmcp::ErrorData> {
-        files::append(args, self.vault_manager.vault_root())
+        tools::append(args, self.vault_manager.vault_root())
             .await
             .map_err(|e| rmcp::ErrorData {
                 code: rmcp::model::ErrorCode(-32602),
@@ -134,9 +133,9 @@ impl Tools {
     )]
     async fn edit_vault_file(
         &self,
-        Parameters(args): Parameters<files::EditFileParams>,
+        Parameters(args): Parameters<tools::EditFileParams>,
     ) -> Result<String, rmcp::ErrorData> {
-        files::edit(args, self.vault_manager.vault_root())
+        tools::edit(args, self.vault_manager.vault_root())
             .await
             .map_err(|e| rmcp::ErrorData {
                 code: rmcp::model::ErrorCode(-32602),
@@ -166,7 +165,6 @@ impl ServerHandler for Server {
     }
 
     /* Tools */
-
     async fn list_tools(
         &self,
         req: Option<PaginatedRequestParams>,
