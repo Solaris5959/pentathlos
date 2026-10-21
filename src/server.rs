@@ -143,6 +143,21 @@ impl Tools {
                 data: None,
             })
     }
+    #[tool(
+        description = "Searches an Obsidian vault for notes matching a partial filename or regex pattern, and returns their full contents. You can optionally restrict the search to a specific sub-directory to narrow the results and save context space."
+    )]
+    async fn search_by_filename(
+        &self,
+        Parameters(args): Parameters<tools::FilenameSearchParams>,
+    ) -> Result<String, rmcp::ErrorData> {
+        tools::filename_search(args, self.vault_manager.vault_root())
+            .await
+            .map_err(|e| rmcp::ErrorData {
+                code: rmcp::model::ErrorCode(-32602),
+                message: e.into(),
+                data: None,
+            })
+    }
 }
 
 /* Server/Resources Implementation */

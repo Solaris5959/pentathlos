@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 dotenvy = "0.15.7"
+regex = "1.13.1"
 rmcp = { version = "3.4.1", features = ["server"] }
 schemars = "1.2.2"
 serde = { version = "1.0.229", features = ["derive"] }

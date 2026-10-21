@@ -16,11 +16,14 @@ pub mod vault;
 // ==========================================
 pub use echo::{EchoParams, run};
 
-// Vault structural tools
-pub use vault::{ListFilesParams, list};
-
 // Individual note lifecycle tools
 pub use notes::{
     AppendFileParams, CreateFileParams, DeleteFileParams, EditFileParams, ReadFileParams,
     ReadFilesParams, append, create, delete, edit, read_file, read_files,
 };
+
+// Vault search tools
+pub use search::{FilenameSearchParams, filename_search};
+
+// Vault structural tools
+pub use vault::{ListFilesParams, list};
