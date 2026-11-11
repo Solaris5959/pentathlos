@@ -3,7 +3,7 @@ use serde::Deserialize;
 use std::fs;
 use std::path::Path;
 
-use crate::utils::uri::resolve_uri;
+use crate::utils::{atomic_files::atomic_write, uri::resolve_uri};
 
 #[derive(Deserialize, JsonSchema)]
 pub struct ReadFileParams {
@@ -132,8 +132,8 @@ pub async fn append(args: AppendFileParams, vault_root: &Path) -> Result<String,
         file_content.push('\n');
         file_content.push_str(&args.new_content);
 
-        fs::write(path, file_content)
-            .map_err(|e| format!("Failed to delete file {}: {}", args.uri, e))?;
+        atomic_write(&path, file_content)
+            .map_err(|e| format!("Failed to append content to {}: {}", &path.display(), e))?;
 
         Ok(format!("Successfully appended content to {}", args.uri))
     } else {
