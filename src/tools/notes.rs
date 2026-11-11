@@ -133,7 +133,7 @@ pub async fn append(args: AppendFileParams, vault_root: &Path) -> Result<String,
         file_content.push_str(&args.new_content);
 
         atomic_write(&path, file_content)
-            .map_err(|e| format!("Failed to append content to {}: {}", &path.display(), e))?;
+            .map_err(|e| format!("Failed to append content to {}: {}", path.display(), e))?;
 
         Ok(format!("Successfully appended content to {}", args.uri))
     } else {
