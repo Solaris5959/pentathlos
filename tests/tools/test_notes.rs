@@ -229,7 +229,9 @@ async fn test_append_file_fails_if_not_exists() {
     let result = append(params, &vault.path()).await;
     assert!(result.is_err());
     let error_msg = result.unwrap_err();
-    assert!(error_msg.contains("File does not exists") || error_msg.contains("No such file"));
+
+    // UPDATED: Match the new ErrorKind::NotFound message
+    assert!(error_msg.contains("File does not exist"));
 }
 
 #[tokio::test]
@@ -361,5 +363,7 @@ async fn test_modify_file_fails_if_not_exists() {
     let result = edit(params, &vault.path()).await;
 
     assert!(result.is_err());
-    assert!(result.unwrap_err().contains("Failed to read file"));
+
+    // UPDATED: Match the new explicit ErrorKind::NotFound message
+    assert!(result.unwrap_err().contains("File does not exist"));
 }

@@ -1,7 +1,7 @@
 use schemars::JsonSchema;
 use serde::Deserialize;
-use std::fs;
 use std::path::Path;
+use tokio::fs;
 
 use crate::utils::{atomic_files::atomic_write, uri::resolve_uri};
 
@@ -70,7 +70,9 @@ pub struct EditFileParams {
 
 pub async fn read_file(args: ReadFileParams, vault_root: &Path) -> Result<String, String> {
     let path = resolve_uri(&args.uri, vault_root)?;
-    fs::read_to_string(&path).map_err(|e| format!("Failed to read {}: {}", args.uri, e))
+    fs::read_to_string(&path)
+        .await
+        .map_err(|e| format!("Failed to read {}: {}", args.uri, e))
 }
 
 pub async fn read_files(args: ReadFilesParams, vault_root: &Path) -> Result<String, String> {
@@ -80,7 +82,7 @@ pub async fn read_files(args: ReadFilesParams, vault_root: &Path) -> Result<Stri
         results.push_str(&format!("--- Content of {} ---\n", uri));
 
         match resolve_uri(&uri, vault_root) {
-            Ok(path) => match fs::read_to_string(&path) {
+            Ok(path) => match fs::read_to_string(&path).await {
                 Ok(content) => results.push_str(&content),
                 Err(e) => results.push_str(&format!("Error reading file: {}\n", e)),
             },
@@ -100,7 +102,7 @@ pub async fn create(args: CreateFileParams, vault_root: &Path) -> Result<String,
     }
 
     if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).map_err(|e| {
+        fs::create_dir_all(parent).await.map_err(|e| {
             format!(
                 "Failed to create parent directories for {}: {}",
                 args.uri, e
@@ -109,6 +111,7 @@ pub async fn create(args: CreateFileParams, vault_root: &Path) -> Result<String,
     }
 
     fs::write(&path, args.content)
+        .await
         .map_err(|e| format!("Failed to write file {}: {}", args.uri, e))?;
 
     Ok(format!("Successfully created {}", args.uri))
@@ -118,7 +121,9 @@ pub async fn delete(args: DeleteFileParams, vault_root: &Path) -> Result<String,
     let path = resolve_uri(&args.uri, vault_root)?;
 
     if path.exists() {
-        fs::remove_file(path).map_err(|e| format!("Failed to delete file {}: {}", args.uri, e))?;
+        fs::remove_file(path)
+            .await
+            .map_err(|e| format!("Failed to delete file {}: {}", args.uri, e))?;
         Ok(format!("Successfully deleted {}", args.uri))
     } else {
         Err(format!("File does not exists at URI: {}", args.uri))
@@ -126,26 +131,55 @@ pub async fn delete(args: DeleteFileParams, vault_root: &Path) -> Result<String,
 }
 
 pub async fn append(args: AppendFileParams, vault_root: &Path) -> Result<String, String> {
-    let path = resolve_uri(&args.uri, vault_root)?;
+    let path = resolve_uri(&args.uri, vault_root)?; // Create path buffer object of URI
 
-    if let Ok(mut file_content) = fs::read_to_string(&path) {
-        file_content.push('\n');
-        file_content.push_str(&args.new_content);
+    // Get file content, handling file not found vs read failed
+    let mut file_content = match fs::read_to_string(&path).await {
+        Ok(content) => content,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            return Err(format!("File does not exist at URI: {}", args.uri));
+        }
+        Err(e) => {
+            return Err(format!("Failed to read {}: {}", args.uri, e));
+        }
+    };
 
-        atomic_write(&path, file_content)
-            .map_err(|e| format!("Failed to append content to {}: {}", path.display(), e))?;
+    // Append content to read contents
+    file_content.push('\n');
+    file_content.push_str(&args.new_content);
 
-        Ok(format!("Successfully appended content to {}", args.uri))
-    } else {
-        Err(format!("File does not exists at URI: {}", args.uri))
+    // Offload synchronous write to a thread pool designed for blocking operations
+    let path_clone = path.to_path_buf();
+    let display_path = path.display().to_string();
+
+    let write_result = tokio::task::spawn_blocking(move || atomic_write(&path_clone, file_content))
+        .await // Await async atomic file write
+        .map_err(|join_err| format!("Thread pool panicked: {}", join_err))?; // Catch Tokio thread errors
+
+    // If write error, handle by informing client
+    if let Err(e) = write_result {
+        return Err(format!(
+            "Failed to append content to {}: {}",
+            display_path, e
+        ));
     }
+
+    // Otherwise append succeeded
+    Ok(format!("Successfully appended content to {}", args.uri))
 }
 
 pub async fn edit(args: EditFileParams, vault_root: &Path) -> Result<String, String> {
     let path = resolve_uri(&args.uri, vault_root)?;
 
-    let file_content = fs::read_to_string(&path)
-        .map_err(|e| format!("Failed to read file {}: {}", args.uri, e))?;
+    let file_content = match fs::read_to_string(&path).await {
+        Ok(content) => content,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            return Err(format!("File does not exist at URI: {}", args.uri));
+        }
+        Err(e) => {
+            return Err(format!("Failed to read {}: {}", args.uri, e));
+        }
+    };
 
     let mut lines: Vec<&str> = file_content.lines().collect();
     let new_lines: Vec<&str> = args.new_content.lines().collect();
@@ -172,8 +206,24 @@ pub async fn edit(args: EditFileParams, vault_root: &Path) -> Result<String, Str
         updated_content.push('\n');
     }
 
-    fs::write(&path, updated_content).map_err(|e| format!("Failed to update file: {}", e))?;
+    // Offload synchronous write to a thread pool designed for blocking operations
+    let path_clone = path.to_path_buf();
+    let display_path = path.display().to_string();
 
+    let write_result =
+        tokio::task::spawn_blocking(move || atomic_write(&path_clone, updated_content))
+            .await // Await async atomic file write
+            .map_err(|join_err| format!("Thread pool panicked: {}", join_err))?; // Catch Tokio thread errors
+
+    // If write error, handle by informing client
+    if let Err(e) = write_result {
+        return Err(format!(
+            "Failed to update content in {}: {}",
+            display_path, e
+        ));
+    }
+
+    // Otherwise edit succeeded
     Ok(format!(
         "Successfully replaced lines {}-{} in {}.\n\nWARNING/NOTE: The file now contains {} total lines. If you left orphaned text at the bottom, use the edit tool again to remove it.",
         args.start_line,
