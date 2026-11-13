@@ -14,7 +14,7 @@
 - [ ] Basic Markdown parsing / AST in Rust
 - [ ] YAML/frontmatter parsing in Rust
 - [ ] Prevent writes outside the configured vault root
-- [ ] Atomic file writes
+- [x] Atomic file writes
 - [ ] Configurable excluded paths
 - [ ] Structured MCP tool outputs
 - [ ] Consistent MCP error handling
